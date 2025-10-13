@@ -30,9 +30,8 @@ COPY document_storage.py .
 # Expose MCPO API port
 EXPOSE 8000
 
-# Health check endpoint
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+# Note: Health check disabled - MCPO may not expose /health by default
+# If you need health checks, use docker-compose healthcheck with /docs or /openapi.json
 
 # Run MCPO proxy with SmartDrive MCP server (NO AUTHENTICATION)
 CMD ["sh", "-c", "mcpo --port 8000 --host 0.0.0.0 -- python smartdrive_server.py"]
