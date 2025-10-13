@@ -8,39 +8,25 @@ class Settings(BaseSettings):
     """
     Configuration settings loaded from environment variables.
 
-    For MCP servers, these are set in Claude Desktop's config file.
+    API-only deployment - connects to existing Pinecone + Azure Blob indexes.
     """
 
-    # Pinecone Configuration
+    # Pinecone Configuration (Required)
     PINECONE_API_KEY: str
     PINECONE_INDEX_NAME: str = "smartdrive"
     PINECONE_HOST: Optional[str] = None
 
-    # Microsoft/OneDrive Configuration
-    MICROSOFT_CLIENT_ID: Optional[str] = None
-    MICROSOFT_TENANT_ID: Optional[str] = None
-
-    # Embedding Provider Configuration
+    # Embedding Provider Configuration (for query encoding)
     EMBEDDING_PROVIDER: str = "local"  # Options: "local", "api", "pinecone", or "voyage"
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
     EMBEDDING_API_URL: Optional[str] = None
     EMBEDDING_API_KEY: Optional[str] = None
 
-    # Voyage AI Configuration
+    # Voyage AI Configuration (optional)
     VOYAGE_API_KEY: Optional[str] = None
     VOYAGE_MODEL: str = "voyage-3-large"
 
-    # Azure OCR Configuration
-    AZURE_VISION_KEY: Optional[str] = None
-    AZURE_VISION_ENDPOINT: Optional[str] = None
-    OCR_STRICT_MODE: bool = True
-
-    # Azure Document Intelligence Configuration
-    AZURE_FORM_RECOGNIZER_KEY: Optional[str] = None
-    AZURE_FORM_RECOGNIZER_ENDPOINT: Optional[str] = None
-    USE_DOCUMENT_INTELLIGENCE: str = "selective"  # Options: "never", "selective", "always"
-
-    # Azure Blob Storage Configuration (for RAG document storage)
+    # Azure Blob Storage Configuration (Required for RAG)
     AZURE_STORAGE_CONNECTION_STRING: Optional[str] = None
     AZURE_STORAGE_CONTAINER_NAME: str = "documents"
 

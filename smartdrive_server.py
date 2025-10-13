@@ -20,9 +20,6 @@ logging.basicConfig(
 logging.getLogger('azure').setLevel(logging.WARNING)
 logging.getLogger('azure.core.pipeline.policies.http_logging_policy').setLevel(logging.WARNING)
 
-# Don't load .env - use environment vars from Claude config
-# load_dotenv()  # REMOVE THIS LINE
-
 # Initialize
 app = Server("smartdrive-mcp")
 pc = Pinecone(api_key=settings.PINECONE_API_KEY)
