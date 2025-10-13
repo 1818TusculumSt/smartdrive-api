@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="logo.png" alt="SmartDrive Logo" width="200"/>
+</div>
+
 # SmartDrive API 🚀
 
 **Crawlerless REST API deployment for SmartDrive semantic search**
