@@ -56,7 +56,7 @@ This is a production-ready MCPO-based REST API that connects to **existing** Pin
 
 4. **Build and run**:
    ```bash
-   docker-compose -f docker-compose.api.yml up -d
+   docker-compose up -d
    ```
 
 5. **Test the API**:
@@ -162,23 +162,23 @@ curl -X POST http://localhost:8000/tools/read_document \
 
 ```bash
 # Build and start
-docker-compose -f docker-compose.api.yml up -d
+docker-compose up -d
 
 # View logs
-docker-compose -f docker-compose.api.yml logs -f
+docker-compose logs -f
 
 # Restart
-docker-compose -f docker-compose.api.yml restart
+docker-compose restart
 
 # Stop
-docker-compose -f docker-compose.api.yml down
+docker-compose down
 
 # Rebuild after changes
-docker-compose -f docker-compose.api.yml build --no-cache
-docker-compose -f docker-compose.api.yml up -d
+docker-compose build --no-cache
+docker-compose up -d
 
 # Check status
-docker-compose -f docker-compose.api.yml ps
+docker-compose ps
 ```
 
 ---
@@ -198,7 +198,7 @@ docker-compose -f docker-compose.api.yml ps
 
 ### Resource Limits
 
-Adjust in [docker-compose.api.yml](docker-compose.api.yml:34-42):
+Adjust in [docker-compose.yml](docker-compose.yml:34-42):
 
 ```yaml
 deploy:
@@ -226,7 +226,7 @@ ports:
 
 1. **Deploy SmartDrive API** on your server:
    ```bash
-   docker-compose -f docker-compose.api.yml up -d
+   docker-compose up -d
    ```
 
 2. **Add to Open WebUI** as an OpenAPI server:
@@ -279,10 +279,10 @@ Should return HTTP 200 OK.
 
 ```bash
 # Live logs
-docker-compose -f docker-compose.api.yml logs -f
+docker-compose logs -f
 
 # Last 100 lines
-docker-compose -f docker-compose.api.yml logs --tail=100
+docker-compose logs --tail=100
 
 # Specific service logs
 docker logs smartdrive-api -f
@@ -306,7 +306,7 @@ docker system df
 
 ```bash
 # Check logs
-docker-compose -f docker-compose.api.yml logs
+docker-compose logs
 
 # Common issues:
 # - Missing .env file
@@ -318,7 +318,7 @@ docker-compose -f docker-compose.api.yml logs
 
 ```bash
 # Verify API key is set
-docker-compose -f docker-compose.api.yml exec smartdrive-api env | grep MCPO_API_KEY
+docker-compose exec smartdrive-api env | grep MCPO_API_KEY
 
 # Check request header:
 # Authorization: Bearer your_secret_api_key_here
@@ -333,7 +333,7 @@ docker-compose -f docker-compose.api.yml exec smartdrive-api env | grep MCPO_API
 
 ```bash
 # Check Pinecone connection
-docker-compose -f docker-compose.api.yml exec smartdrive-api python -c "
+docker-compose exec smartdrive-api python -c "
 from pinecone import Pinecone
 import os
 pc = Pinecone(api_key=os.getenv('PINECONE_API_KEY'))
@@ -346,7 +346,7 @@ print(index.describe_index_stats())
 
 ```bash
 # Test connection
-docker-compose -f docker-compose.api.yml exec smartdrive-api python -c "
+docker-compose exec smartdrive-api python -c "
 from azure.storage.blob import BlobServiceClient
 import os
 client = BlobServiceClient.from_connection_string(os.getenv('AZURE_STORAGE_CONNECTION_STRING'))
@@ -361,18 +361,18 @@ print('Container exists:', container.exists())
 
 ```
 smartdrive-api/
-├── Dockerfile.api              # API-optimized Dockerfile
-├── docker-compose.api.yml      # API-specific compose config
-├── requirements-api.txt        # Minimal dependencies (no crawler)
-├── .env.api.example           # API-only environment template
-├── README.API.md              # This file
+├── Dockerfile                  # MCPO API server
+├── docker-compose.yml          # Production deployment config
+├── requirements.txt            # Minimal dependencies (no crawler)
+├── .env.example                # Environment template
+├── .dockerignore               # Excludes .env and cache files
+├── README.md                   # This file
+├── DEPLOY.md                   # Deployment guide
 │
-├── smartdrive_server.py       # MCP server (core)
-├── embeddings.py              # Query embedding encoding
-├── config.py                  # Configuration management
-├── document_storage.py        # Azure Blob Storage interface
-│
-└── (crawler files not included in Docker image)
+├── smartdrive_server.py        # MCP server (core)
+├── embeddings.py               # Query embedding encoding
+├── config.py                   # Configuration management
+└── document_storage.py         # Azure Blob Storage interface
 ```
 
 ---
@@ -412,8 +412,7 @@ smartdrive-api/
 
 ## 🤝 Support
 
-- **GitHub Issues**: [Your repo issues](https://github.com/yourusername/smartdrive-api/issues)
-- **Documentation**: See [README.md](README.md) for full SmartDrive docs
+- **GitHub Issues**: [smartdrive-api/issues](https://github.com/1818TusculumSt/smartdrive-api/issues)
 - **Original MCP Server**: [SmartDrive MCP](https://github.com/1818TusculumSt/smartdrive-mcp)
 
 ---

@@ -25,11 +25,11 @@ Copy these files to your server:
 ```bash
 # Required files for API-only deployment
 smartdrive-api/
-├── Dockerfile.api
-├── docker-compose.api.yml
-├── requirements-api.txt
-├── .env.api.example
-├── .dockerignore.api
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+├── .env.example
+├── .dockerignore
 ├── smartdrive_server.py
 ├── embeddings.py
 ├── config.py
@@ -56,7 +56,7 @@ cd smartdrive-api
 1. **Copy the example env file**:
    ```bash
    cd /opt/smartdrive-api
-   cp .env.api.example .env
+   cp .env.example .env
    ```
 
 2. **Edit `.env` with your credentials**:
@@ -95,17 +95,17 @@ cd smartdrive-api
 
 1. **Build the Docker image**:
    ```bash
-   docker-compose -f docker-compose.api.yml build
+   docker-compose build
    ```
 
 2. **Start the service**:
    ```bash
-   docker-compose -f docker-compose.api.yml up -d
+   docker-compose up -d
    ```
 
 3. **Check the logs**:
    ```bash
-   docker-compose -f docker-compose.api.yml logs -f
+   docker-compose logs -f
    ```
 
    You should see:
@@ -196,7 +196,7 @@ sudo certbot --nginx -d api.yourdomain.com
 
 ### Change Port
 
-Edit [docker-compose.api.yml](docker-compose.api.yml):
+Edit [docker-compose.yml](docker-compose.yml):
 ```yaml
 ports:
   - "9000:8000"  # Change 9000 to your desired port
@@ -204,7 +204,7 @@ ports:
 
 ### Adjust Resources
 
-Edit [docker-compose.api.yml](docker-compose.api.yml):
+Edit [docker-compose.yml](docker-compose.yml):
 ```yaml
 deploy:
   resources:
@@ -226,12 +226,12 @@ LOG_LEVEL=DEBUG
 
 ### View Logs
 ```bash
-docker-compose -f docker-compose.api.yml logs -f
+docker-compose logs -f
 ```
 
 ### Restart Service
 ```bash
-docker-compose -f docker-compose.api.yml restart
+docker-compose restart
 ```
 
 ### Update Deployment
@@ -240,8 +240,8 @@ docker-compose -f docker-compose.api.yml restart
 git pull
 
 # Rebuild and restart
-docker-compose -f docker-compose.api.yml build
-docker-compose -f docker-compose.api.yml up -d
+docker-compose build
+docker-compose up -d
 ```
 
 ### Backup Configuration
@@ -293,13 +293,13 @@ Set up Nginx with SSL (see Step 6 above), then:
 
 **Check logs**:
 ```bash
-docker-compose -f docker-compose.api.yml logs
+docker-compose logs
 ```
 
 **Common issues**:
-- Missing `.env` file → Copy from `.env.api.example`
+- Missing `.env` file → Copy from `.env.example`
 - Invalid credentials → Double-check Pinecone/Azure credentials
-- Port conflict → Change port in `docker-compose.api.yml`
+- Port conflict → Change port in `docker-compose.yml`
 
 ### Can't connect from external server
 
@@ -322,7 +322,7 @@ docker-compose -f docker-compose.api.yml logs
 
 **Check Pinecone connection**:
 ```bash
-docker-compose -f docker-compose.api.yml exec smartdrive-api python -c "
+docker-compose exec smartdrive-api python -c "
 from pinecone import Pinecone
 import os
 pc = Pinecone(api_key=os.getenv('PINECONE_API_KEY'))
@@ -339,7 +339,7 @@ Expected output shows your vector count > 0.
 
 **Verify API key**:
 ```bash
-docker-compose -f docker-compose.api.yml exec smartdrive-api env | grep MCPO_API_KEY
+docker-compose exec smartdrive-api env | grep MCPO_API_KEY
 ```
 
 **Test with correct header**:
@@ -356,7 +356,7 @@ curl -X POST http://localhost:8000/tools/search_onedrive \
 
 ### Check Container Status
 ```bash
-docker-compose -f docker-compose.api.yml ps
+docker-compose ps
 ```
 
 ### Resource Usage
@@ -404,7 +404,7 @@ docker inspect smartdrive-api | grep -A 10 Health
 ## 📞 Support
 
 - **Issues**: Open a GitHub issue
-- **Docs**: See [README.API.md](README.API.md)
+- **Docs**: See [README.md](README.md)
 - **Original Project**: [SmartDrive MCP](https://github.com/1818TusculumSt/smartdrive-mcp)
 
 ---
