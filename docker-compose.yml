@@ -1,0 +1,78 @@
+# SmartDrive API - Docker Compose Configuration
+# MCPO-based REST API server (crawlerless deployment)
+
+version: '3.8'
+
+services:
+  smartdrive-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smartdrive-api
+
+    # Load environment variables from .env
+    env_file:
+      - .env
+
+    # Additional environment variables for MCPO
+    environment:
+      # MCPO API Key (override in .env or set here)
+      MCPO_API_KEY: ${MCPO_API_KEY:-changeme}
+
+      # Pinecone Configuration (required)
+      PINECONE_API_KEY: ${PINECONE_API_KEY}
+      PINECONE_INDEX_NAME: ${PINECONE_INDEX_NAME:-smartdrive}
+      PINECONE_HOST: ${PINECONE_HOST}
+
+      # Azure Blob Storage (required for RAG)
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING}
+      AZURE_STORAGE_CONTAINER_NAME: ${AZURE_STORAGE_CONTAINER_NAME:-documents}
+
+      # Embedding Configuration (for query encoding only)
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-local}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
+
+      # Optional: Voyage AI
+      VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
+      VOYAGE_MODEL: ${VOYAGE_MODEL:-voyage-3-large}
+
+      # Optional: Custom API
+      EMBEDDING_API_URL: ${EMBEDDING_API_URL:-}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+
+    # Expose API port
+    ports:
+      - "8000:8000"
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Resource limits (adjust based on your needs)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Optional: Add reverse proxy (Nginx/Traefik) for production
+# networks:
+#   smartdrive:
+#     name: smartdrive-network

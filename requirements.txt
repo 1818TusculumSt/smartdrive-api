@@ -1,0 +1,33 @@
+# SmartDrive API - Minimal Requirements (API-only, no crawler)
+# Only includes dependencies needed for MCP server and MCPO
+
+# Core MCP and MCPO
+mcp>=1.0.0
+mcpo>=0.0.17
+
+# Pinecone for vector search
+pinecone[grpc]>=5.0.0
+pinecone-text>=0.9.0
+
+# Azure Blob Storage (RAG full-text retrieval)
+azure-storage-blob>=12.19.0
+
+# Configuration
+pydantic-settings>=2.0.0
+python-dotenv>=1.0.0
+
+# HTTP client for API-based embeddings
+aiohttp>=3.9.0
+httpx>=0.27.0
+
+# Embeddings (CPU-only, no CUDA)
+# For local embedding provider: installs PyTorch CPU-only version
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.0.0
+sentence-transformers>=2.2.0
+
+# Note: For API-based deployments without local embeddings, you can:
+# 1. Use Voyage AI: pip install voyageai
+# 2. Use OpenAI: pip install openai
+# 3. Use Pinecone Inference: No extra deps needed (uses pinecone[grpc])
+# And remove torch + sentence-transformers above
