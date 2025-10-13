@@ -14,11 +14,8 @@ services:
     env_file:
       - .env
 
-    # Additional environment variables for MCPO
+    # Environment variables
     environment:
-      # MCPO API Key (override in .env or set here)
-      MCPO_API_KEY: ${MCPO_API_KEY:-changeme}
-
       # Pinecone Configuration (required)
       PINECONE_API_KEY: ${PINECONE_API_KEY}
       PINECONE_INDEX_NAME: ${PINECONE_INDEX_NAME:-smartdrive}

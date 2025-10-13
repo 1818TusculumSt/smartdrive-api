@@ -34,6 +34,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run MCPO proxy with SmartDrive MCP server
-# API key and other config come from environment variables
-CMD ["sh", "-c", "mcpo --port 8000 --api-key \"${MCPO_API_KEY:-secret}\" --host 0.0.0.0 -- python smartdrive_server.py"]
+# Run MCPO proxy with SmartDrive MCP server (NO AUTHENTICATION)
+CMD ["sh", "-c", "mcpo --port 8000 --host 0.0.0.0 -- python smartdrive_server.py"]

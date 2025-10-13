@@ -11,7 +11,7 @@ This is a production-ready MCPO-based REST API that connects to **existing** Pin
 - **100% API-only**: No crawler, no indexing, no OneDrive access
 - **MCPO-based**: Exposes your MCP server as OpenAPI/REST endpoints
 - **Lightweight**: ~500MB Docker image vs 2GB+ with crawler dependencies
-- **Production-ready**: Health checks, logging, authentication, auto-restart
+- **Production-ready**: Health checks, logging, auto-restart (NO AUTHENTICATION REQUIRED)
 
 ---
 
@@ -37,9 +37,6 @@ This is a production-ready MCPO-based REST API that connects to **existing** Pin
 
 3. **Set required variables**:
    ```env
-   # API Authentication
-   MCPO_API_KEY=your_secret_api_key_here
-
    # Pinecone (existing index)
    PINECONE_API_KEY=your_pinecone_api_key
    PINECONE_INDEX_NAME=smartdrive
@@ -69,7 +66,6 @@ This is a production-ready MCPO-based REST API that connects to **existing** Pin
 
    # Search OneDrive
    curl -X POST http://localhost:8000/tools/search_onedrive \
-     -H "Authorization: Bearer your_secret_api_key_here" \
      -H "Content-Type: application/json" \
      -d '{"query": "tax forms", "top_k": 5}'
    ```
@@ -87,7 +83,7 @@ http://localhost:8000
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/health` | Health check (no auth required) |
+| GET | `/health` | Health check |
 | GET | `/docs` | Interactive Swagger UI |
 | GET | `/openapi.json` | OpenAPI schema |
 | POST | `/tools/search_onedrive` | Hybrid semantic + keyword search |
@@ -95,10 +91,7 @@ http://localhost:8000
 
 ### Authentication
 
-All tool endpoints require Bearer token authentication:
-```bash
-Authorization: Bearer your_secret_api_key_here
-```
+**NO AUTHENTICATION REQUIRED** - All endpoints are open for direct connection from Open WebUI!
 
 ---
 
@@ -109,7 +102,6 @@ Authorization: Bearer your_secret_api_key_here
 **Request**:
 ```bash
 curl -X POST http://localhost:8000/tools/search_onedrive \
-  -H "Authorization: Bearer your_secret_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{
     "query": "tax forms 2024",
@@ -136,7 +128,6 @@ curl -X POST http://localhost:8000/tools/search_onedrive \
 **Request**:
 ```bash
 curl -X POST http://localhost:8000/tools/read_document \
-  -H "Authorization: Bearer your_secret_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{
     "doc_id": "doc_abc123def456"
@@ -233,7 +224,7 @@ ports:
    - Go to Open WebUI → Settings → Functions
    - Add OpenAPI server:
      - **URL**: `http://your-server-ip:8000`
-     - **API Key**: Your `MCPO_API_KEY` value
+     - **API Key**: Leave blank (no auth required!)
    - Save and test
 
 3. **Use in Open WebUI**:
@@ -244,24 +235,20 @@ ports:
 
 ## 🔒 Security Best Practices
 
-1. **Change default API key**:
-   ```env
-   MCPO_API_KEY=$(openssl rand -hex 32)
-   ```
-
-2. **Use HTTPS in production**:
+1. **Use HTTPS in production**:
    - Add reverse proxy (Nginx/Traefik)
    - Get SSL certificate (Let's Encrypt)
 
-3. **Restrict network access**:
+2. **Restrict network access**:
    - Firewall rules
    - Docker network isolation
    - VPN/private network only
 
-4. **Rotate credentials regularly**:
-   - API keys
+3. **Rotate credentials regularly**:
    - Pinecone API keys
    - Azure Storage keys
+
+**NOTE**: This deployment has NO AUTHENTICATION. Make sure you run it on a trusted network or behind a firewall!
 
 ---
 
@@ -312,16 +299,6 @@ docker-compose logs
 # - Missing .env file
 # - Invalid Pinecone/Azure credentials
 # - Port 8000 already in use
-```
-
-### Authentication errors
-
-```bash
-# Verify API key is set
-docker-compose exec smartdrive-api env | grep MCPO_API_KEY
-
-# Check request header:
-# Authorization: Bearer your_secret_api_key_here
 ```
 
 ### Search returns no results
