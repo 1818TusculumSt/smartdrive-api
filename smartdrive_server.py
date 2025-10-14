@@ -397,7 +397,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
             # Truncate if needed
             if text_length > MAX_PREVIEW_CHARS:
-                preview_text = full_text[:MAX_PREVIEW_CHARS] + f"\n\n... [Truncated: {text_length - MAX_PREVIEW_CHARS:,} more characters. Use read_document('{doc_id}') for full text]"
+                preview_text = full_text[:MAX_PREVIEW_CHARS] + f"\n\n... [Truncated: {text_length - MAX_PREVIEW_CHARS:,} more characters. Call read_document with doc_id={doc_id} for full text]"
             else:
                 preview_text = full_text
 
@@ -407,11 +407,11 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
             result_block = (
                 f"**Result {i}** - Relevance Score: {score_display} {score_details}\n"
+                f"🔑 **DOC_ID: {doc_id}** (use this exact ID for read_document)\n"
                 f"📄 **File:** {doc_info['file_name']}\n"
                 f"📁 **Path:** {doc_info['file_path']}\n"
                 f"📅 **Modified:** {doc_info['modified']}\n"
                 f"📊 **Size:** {text_length:,} characters\n"
-                f"🔑 **Document ID:** `{doc_id}`\n"
                 f"📝 **Preview:**\n{preview_text}\n\n"
                 f"---\n\n"
             )
