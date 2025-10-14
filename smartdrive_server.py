@@ -342,6 +342,9 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 meta = match.metadata
                 doc_id = meta.get('doc_id')
 
+                # DEBUG: Log what we're getting from Pinecone
+                logging.info(f"  📋 Pinecone match - doc_id: '{doc_id}', file: '{meta.get('file_name', 'N/A')}', score: {match.score:.3f}")
+
                 if doc_id and doc_id not in all_doc_results:
                     # First time seeing this document - retrieve full text from Azure Blob
                     full_text = document_storage.retrieve_document(doc_id)
@@ -386,6 +389,9 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         current_size = len(output)
 
         for i, (doc_id, doc_info) in enumerate(reranked_results, 1):
+            # DEBUG: Log what we're returning in the response
+            logging.info(f"  📤 Returning result {i} - doc_id: '{doc_id}', file: '{doc_info['file_name']}'")
+
             full_text = doc_info['full_text']
             text_length = len(full_text)
 
