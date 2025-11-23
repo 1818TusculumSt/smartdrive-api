@@ -162,6 +162,97 @@ def rerank_results(query: str, doc_results: Dict[str, Dict]) -> List[Tuple[str, 
     logging.info(f"Reranking complete. Top result score: {reranked[0][1]['blended_score']:.3f}")
     return reranked
 
+async def _perform_search(original_query: str, top_k: int = 5) -> List[Tuple[str, Dict]]:
+    """
+    Internal helper to perform the full search pipeline:
+    1. Preprocess query
+    2. Generate variations
+    3. Hybrid search (dense + sparse) for all variations
+    4. Rerank results
+    """
+    logging.info(f"🔍 Search request: '{original_query}' (top_k={top_k})")
+
+    # ENHANCEMENT 1: Preprocess query (add semantic context)
+    enhanced_query = preprocess_query(original_query)
+    logging.info(f"📝 Enhanced query: '{enhanced_query}'")
+
+    # ENHANCEMENT 2: Generate query variations
+    query_variations = generate_query_variations(enhanced_query)
+
+    # Collect results from all query variations
+    all_doc_results = {}
+    queries_attempted = 0
+
+    # Search with enhanced query + variations (max 3 variations to avoid slowdown)
+    for query_variant in query_variations[:3]:
+        queries_attempted += 1
+        logging.info(f"🔎 Searching with variant {queries_attempted}: '{query_variant}'")
+
+        # Generate dense query embedding (semantic)
+        query_embedding = await embedding_provider.get_embedding(query_variant)
+
+        if query_embedding is None:
+            logging.warning(f"⚠️ Failed to generate embedding for variant: '{query_variant}'")
+            continue
+
+        query_embedding = query_embedding.tolist()
+
+        # Generate sparse query embedding (keyword/BM25) for hybrid search
+        sparse_query_embedding = await embedding_provider.get_sparse_embedding(query_variant)
+
+        # Search Pinecone with hybrid search (dense + sparse)
+        # Fetch more results than requested for reranking (top_k * 4)
+        fetch_count = min(top_k * 4, 20)  # Max 20 for reranking
+        query_params = {
+            "vector": query_embedding,
+            "top_k": fetch_count,
+            "namespace": "smartdrive",
+            "include_metadata": True
+        }
+
+        # Add sparse vector if generated successfully and contains values
+        # Pinecone requires sparse vectors to have at least one value
+        if sparse_query_embedding and sparse_query_embedding.get("values") and len(sparse_query_embedding["values"]) > 0:
+            query_params["sparse_vector"] = sparse_query_embedding
+        else:
+            logging.info(f"No sparse values generated for query variant '{query_variant}', using dense-only search")
+
+        results = index.query(**query_params)
+
+        # Collect documents from this query variant
+        for match in results.matches:
+            meta = match.metadata
+            doc_id = meta.get('doc_id')
+
+            # DEBUG: Log what we're getting from Pinecone
+            logging.info(f"  📋 Pinecone match - doc_id: '{doc_id}', file: '{meta.get('file_name', 'N/A')}', score: {match.score:.3f}")
+
+            if doc_id and doc_id not in all_doc_results:
+                # First time seeing this document - retrieve full text from Azure Blob
+                full_text = document_storage.retrieve_document(doc_id)
+
+                if full_text:
+                    all_doc_results[doc_id] = {
+                        "file_name": meta.get('file_name', 'Unknown'),
+                        "file_path": meta.get('file_path', 'Unknown'),
+                        "modified": meta.get('modified', 'Unknown'),
+                        "score": match.score,
+                        "full_text": full_text,
+                        "source_query": query_variant
+                    }
+
+    # Check if we found anything
+    if not all_doc_results:
+        return []
+
+    logging.info(f"📊 Found {len(all_doc_results)} unique documents across {queries_attempted} query variations")
+
+    # ENHANCEMENT 3: Rerank results using CrossEncoder
+    reranked_results = rerank_results(original_query, all_doc_results)
+
+    # Take only top_k after reranking
+    return reranked_results[:top_k]
+
 @app.list_tools()
 async def list_tools() -> list[Tool]:
     """List available tools"""
@@ -252,6 +343,38 @@ async def list_tools() -> list[Tool]:
             }
         ),
         Tool(
+            name="fuzzy_read",
+            description="""
+            🧠 SMART READ - Find and open a document by description.
+
+            This tool combines search and read into one step. It finds the MOST RELEVANT document
+            matching your description and returns its full content immediately.
+
+            WHEN TO USE:
+            - When you are confident there is ONE specific document you want
+            - When you want to "open" a file without searching first
+            - E.g., "Read the Q4 marketing plan", "Open the resume for John Doe"
+
+            HOW IT WORKS:
+            1. Performs a full semantic search with your query
+            2. Reranks results to find the absolute best match
+            3. Returns the FULL content of the top result
+
+            NOTE: If you are unsure if the document exists or want to see options,
+            use 'search_onedrive' instead.
+            """,
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Description of the file to open (e.g., 'Q3 financial report', 'meeting notes from last Friday')"
+                    }
+                },
+                "required": ["query"]
+            }
+        ),
+        Tool(
             name="suggest_queries",
             description="""
             💡 GENERATE BETTER SEARCH QUERIES for improved results.
@@ -291,79 +414,9 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         original_query = arguments["query"]
         top_k = arguments.get("top_k", 5)
 
-        logging.info(f"🔍 Search request: '{original_query}' (top_k={top_k})")
+        reranked_results = await _perform_search(original_query, top_k)
 
-        # ENHANCEMENT 1: Preprocess query (add semantic context)
-        enhanced_query = preprocess_query(original_query)
-        logging.info(f"📝 Enhanced query: '{enhanced_query}'")
-
-        # ENHANCEMENT 2: Generate query variations
-        query_variations = generate_query_variations(enhanced_query)
-
-        # Collect results from all query variations
-        all_doc_results = {}
-        queries_attempted = 0
-
-        # Search with enhanced query + variations (max 3 variations to avoid slowdown)
-        for query_variant in query_variations[:3]:
-            queries_attempted += 1
-            logging.info(f"🔎 Searching with variant {queries_attempted}: '{query_variant}'")
-
-            # Generate dense query embedding (semantic)
-            query_embedding = await embedding_provider.get_embedding(query_variant)
-
-            if query_embedding is None:
-                logging.warning(f"⚠️ Failed to generate embedding for variant: '{query_variant}'")
-                continue
-
-            query_embedding = query_embedding.tolist()
-
-            # Generate sparse query embedding (keyword/BM25) for hybrid search
-            sparse_query_embedding = await embedding_provider.get_sparse_embedding(query_variant)
-
-            # Search Pinecone with hybrid search (dense + sparse)
-            # Fetch more results than requested for reranking (top_k * 4)
-            fetch_count = min(top_k * 4, 20)  # Max 20 for reranking
-            query_params = {
-                "vector": query_embedding,
-                "top_k": fetch_count,
-                "namespace": "smartdrive",
-                "include_metadata": True
-            }
-
-            # Add sparse vector if generated successfully and contains values
-            # Pinecone requires sparse vectors to have at least one value
-            if sparse_query_embedding and sparse_query_embedding.get("values") and len(sparse_query_embedding["values"]) > 0:
-                query_params["sparse_vector"] = sparse_query_embedding
-            else:
-                logging.info(f"No sparse values generated for query variant '{query_variant}', using dense-only search")
-
-            results = index.query(**query_params)
-
-            # Collect documents from this query variant
-            for match in results.matches:
-                meta = match.metadata
-                doc_id = meta.get('doc_id')
-
-                # DEBUG: Log what we're getting from Pinecone
-                logging.info(f"  📋 Pinecone match - doc_id: '{doc_id}', file: '{meta.get('file_name', 'N/A')}', score: {match.score:.3f}")
-
-                if doc_id and doc_id not in all_doc_results:
-                    # First time seeing this document - retrieve full text from Azure Blob
-                    full_text = document_storage.retrieve_document(doc_id)
-
-                    if full_text:
-                        all_doc_results[doc_id] = {
-                            "file_name": meta.get('file_name', 'Unknown'),
-                            "file_path": meta.get('file_path', 'Unknown'),
-                            "modified": meta.get('modified', 'Unknown'),
-                            "score": match.score,
-                            "full_text": full_text,
-                            "source_query": query_variant
-                        }
-
-        # Check if we found anything
-        if not all_doc_results:
+        if not reranked_results:
             return [TextContent(
                 type="text",
                 text=f"❌ No matching documents found for: '{original_query}'\n\n"
@@ -373,17 +426,9 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                      f"- Using the 'suggest_queries' tool for better query ideas"
             )]
 
-        logging.info(f"📊 Found {len(all_doc_results)} unique documents across {queries_attempted} query variations")
-
-        # ENHANCEMENT 3: Rerank results using CrossEncoder
-        reranked_results = rerank_results(original_query, all_doc_results)
-
-        # Take only top_k after reranking
-        reranked_results = reranked_results[:top_k]
-
         # Format output
         output = f"🔍 Found {len(reranked_results)} results for: '{original_query}'\n"
-        output += f"🧠 Searched {queries_attempted} query variations, reranked with AI\n\n"
+        output += f"🧠 Searched with AI reranking\n\n"
 
         # Format output with document summaries (prevent 1MB limit issues)
         MAX_PREVIEW_CHARS = 2000  # Show first 2000 chars per document
@@ -426,6 +471,36 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
             output += result_block
             current_size += len(result_block)
+
+        return [TextContent(type="text", text=output)]
+
+    elif name == "fuzzy_read":
+        query = arguments["query"]
+        logging.info(f"🧠 Fuzzy read request: '{query}'")
+
+        # Perform search looking for the single best match
+        reranked_results = await _perform_search(query, top_k=1)
+
+        if not reranked_results:
+            return [TextContent(
+                type="text",
+                text=f"❌ No matching documents found for: '{query}'"
+            )]
+
+        # Get the top result
+        doc_id, doc_info = reranked_results[0]
+        full_text = doc_info['full_text']
+
+        logging.info(f"✅ Fuzzy read found: {doc_info['file_name']} (Score: {doc_info['blended_score']:.3f})")
+
+        output = (
+            f"✅ **Found Best Match:** {doc_info['file_name']}\n"
+            f"📁 **Path:** {doc_info['file_path']}\n"
+            f"📊 **Relevance:** {doc_info['blended_score']:.3f}\n"
+            f"🔑 **ID:** {doc_id}\n\n"
+            f"**Full Content:**\n\n"
+            f"{full_text}"
+        )
 
         return [TextContent(type="text", text=output)]
 
